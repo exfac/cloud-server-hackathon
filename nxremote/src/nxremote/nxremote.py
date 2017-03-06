@@ -130,6 +130,8 @@ class NXRemoteFile(NXFile):
         """
         Reads the group with the current path and returns it as an NXgroup.
         """
+        if group is None:
+            return NXgroup(name=name)
         attrs = self._readattrs()
         nxclass = self._readnxclass(attrs)
         if nxclass is not None:
@@ -150,6 +152,8 @@ class NXRemoteFile(NXFile):
         """
         Reads a data object and returns it as an NXfield or NXlink.
         """
+        if field is None:
+            return NXfield(name=name)
         value, shape, dtype, attrs = self.readvalues(field)
         if 'target' in attrs and self.nxpath != 'target':
             return NXlinkfield(value=value, name=name, dtype=dtype, shape=shape, 
@@ -178,9 +182,7 @@ class NXRemoteFile(NXFile):
 
 def loadremote(filename, endpoint='http://34.193.81.207:5000', mode='r'):
     """
-    Reads a NeXus file returning a tree of objects.
-
-    This is aliased to 'nxload' because of potential name clashes with Numpy
+    Reads a remote NeXus file returning a tree of objects.
     """
     with NXRemoteFile(filename, mode, endpoint) as f:
         tree = f.readfile()
