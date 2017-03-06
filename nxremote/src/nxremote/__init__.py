@@ -17,9 +17,6 @@ del get_versions
 __license__ = u'BSD'
 __author__ = u'ExFaC'
 
-__url__          = u'http://nexpy.github.io/nexpy/'
-__download_url__ = u'https://github.com/nexpy/nexusformat/'
-
 __description__ = u'nxremote: Python API to access h5serv data using h5pyd'
 __long_description__ = \
 """

@@ -57,21 +57,10 @@ class NXRemoteFile(NXFile):
         """
         self.h5 = h5
         self.name = name
-        if mode == 'w' or mode == 'w-' or mode == 'w5':
-            if mode == 'w5':
-                mode = 'w'
-            self._server = server
-            self._file = self.h5.File(self.domain, mode, endpoint=self._server)
-            self._mode = 'rw'
-        else:
-            if mode == 'rw' or mode == 'r+':
-                self._mode = 'rw'
-                mode = 'r+'
-            else:
-                self._mode = 'r'
-            self._server = server
-            self._file = self.h5.File(self.domain, mode, endpoint=server)
-        self._filename = self._file.filename                             
+        self._mode = 'r'
+        self._server = server
+        self._file = self.h5.File(self.domain, mode, endpoint=server)
+        self._filename = self.domain                             
         self._path = '/'
 
     def __repr__(self):
@@ -80,9 +69,20 @@ class NXRemoteFile(NXFile):
 
     def open(self, **kwds):
         if self._file.id.uuid == 0:
-            self._file = self.h5.File(self._filename, 'r', endpoint=self._server)
+            self._file = self.h5.File(self._filename,self._mode, 
+                                      endpoint=self._server)
             self.nxpath = '/'
         return self
+
+    def close(self):
+        if self.isopen():
+            self._file.close()
+
+    def isopen(self):
+        if self._file.id.uuid != 0:
+            return True
+        else:
+            return False
 
     @property
     def domain(self):
@@ -93,11 +93,90 @@ class NXRemoteFile(NXFile):
 
     @property
     def file(self):
-        if self._file.id.uuid == 0:
+        if not self.isopen():
             self.open()
         return self._file
 
-def loadremote(filename, endpoint, mode='r'):
+    def readfile(self):
+        """
+        Reads the NeXus file structure from the file and returns a tree of 
+        NXobjects.
+
+        Large datasets are not read until they are needed.
+        """
+        self.nxpath = '/'
+        root = self._readgroup('root', self._file['/'])
+        root._group = None
+        root._file = self
+        root._filename = self._filename
+        root._mode = self._mode
+        return root
+
+    def _readattrs(self):
+        return dict(self[self.nxpath].attrs.items())
+
+    def _readchildren(self):
+        children = {}
+        for name, value in self._file[self.nxpath].items():
+            self.nxpath = self.nxpath + '/' + name
+            if isinstance(value, self.h5.Group):
+                children[name] = self._readgroup(name, value)
+            else:
+                children[name] = self._readdata(name, value)
+            self.nxpath = self.nxparent
+        return children
+
+    def _readgroup(self, name, group):
+        """
+        Reads the group with the current path and returns it as an NXgroup.
+        """
+        attrs = self._readattrs()
+        nxclass = self._readnxclass(attrs)
+        if nxclass is not None:
+            del attrs['NX_class']
+        elif self.nxpath == '/':
+            nxclass = 'NXroot'
+        else:
+            nxclass = 'NXgroup'
+        children = self._readchildren()
+        group = NXgroup(nxclass=nxclass, name=name, attrs=attrs, 
+                        entries=children)
+        for obj in children.values():
+            obj._group = group
+        group._changed = True
+        return group
+
+    def _readdata(self, name, field):
+        """
+        Reads a data object and returns it as an NXfield or NXlink.
+        """
+        value, shape, dtype, attrs = self.readvalues(field)
+        if 'target' in attrs and self.nxpath != 'target':
+            return NXlinkfield(value=value, name=name, dtype=dtype, shape=shape, 
+                               target=self.attrs['target'], attrs=attrs)
+        else:
+            return NXfield(value=value, name=name, dtype=dtype, shape=shape, 
+                           attrs=attrs)
+ 
+    def readvalues(self, field):
+        shape, dtype = field.shape, field.dtype
+        if shape == (1,):
+            shape = ()
+        #Read in the data if it's not too large
+        if np.prod(shape) < 1000:# i.e., less than 1k dims
+            try:
+                value = field[()]
+                if isinstance(value, np.ndarray) and value.shape == (1,):
+                    value = np.asscalar(value)
+            except ValueError:
+                value = None
+        else:
+            value = None
+        attrs = self.attrs
+        return value, shape, dtype, attrs
+
+
+def loadremote(filename, endpoint='http://34.193.81.207:5000', mode='r'):
     """
     Reads a NeXus file returning a tree of objects.
 
@@ -107,4 +186,4 @@ def loadremote(filename, endpoint, mode='r'):
         tree = f.readfile()
     return tree
 
-nxloadremote = load
+nxloadremote = loadremote

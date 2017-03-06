@@ -1,11 +1,4 @@
 #!/usr/bin/env python
-#-----------------------------------------------------------------------------
-# Copyright (c) 2013-2016, NeXpy Development Team.
-#
-# Distributed under the terms of the Modified BSD License.
-#
-# The full license is in the file COPYING, distributed with this software.
-#-----------------------------------------------------------------------------
 
 from setuptools import setup, find_packages, Extension
 
@@ -17,29 +10,22 @@ import versioneer
 
 # pull in some definitions from the package's __init__.py file
 sys.path.insert(0, os.path.join('src', ))
-import nexusformat
-import nexusformat.requires
+import nxremote
+import nxremote.requires
 
 verbose=1
 
-setup (name =  nexusformat.__package_name__, # NeXpy
+setup (name =  nxremote.__package_name__,
        version=versioneer.get_version(),
        cmdclass=versioneer.get_cmdclass(),
-       license = nexusformat.__license__,
-       description = nexusformat.__description__,
-       long_description = nexusformat.__long_description__,
-       author=nexusformat.__author_name__,
-       author_email=nexusformat.__author_email__,
-       url=nexusformat.__url__,
-       download_url=nexusformat.__download_url__,
+       license = nxremote.__license__,
+       description = nxremote.__description__,
+       long_description = nxremote.__long_description__,
+       author=nxremote.__author__,
        platforms='any',
-       install_requires = nexusformat.requires.pkg_requirements,
+       install_requires = nxremote.requires.pkg_requirements,
        package_dir = {'': 'src'},
        packages = find_packages('src'),
-       entry_points={
-            # create & install scripts in <python>/bin
-            'console_scripts': ['nxstack=nexusformat.scripts.nxstack:main'],
-       },
        classifiers= ['Development Status :: 4 - Beta',
                      'Intended Audience :: Developers',
                      'Intended Audience :: Science/Research',
